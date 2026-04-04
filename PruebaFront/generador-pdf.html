@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Generador de PDF</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0e0e0e;
+      --surface:   #161616;
+      --border:    #2a2a2a;
+      --accent:    #c8a96e;
+      --accent-dim:#7a6239;
+      --text:      #f0ece4;
+      --muted:     #888;
+      --danger:    #e05c5c;
+      --success:   #5cbf8a;
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 10%, rgba(200,169,110,.06) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 90%, rgba(200,169,110,.04) 0%, transparent 55%);
+    }
+
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 3rem 2.5rem 2.5rem;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    }
+
+    /* decorative corner lines */
+    .card::before, .card::after {
+      content: '';
+      position: absolute;
+      width: 28px; height: 28px;
+      border-color: var(--accent);
+      border-style: solid;
+    }
+    .card::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
+    .card::after  { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
+
+    .icon {
+      width: 48px; height: 48px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.5rem;
+      color: var(--accent);
+    }
+    .icon svg { width: 22px; height: 22px; }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -.01em;
+      line-height: 1.2;
+      margin-bottom: .4rem;
+    }
+
+    .subtitle {
+      font-size: .82rem;
+      color: var(--muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      margin-bottom: 2rem;
+    }
+
+    .divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .field { margin-bottom: 1.4rem; }
+
+    label {
+      display: block;
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .5rem;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: .75rem 1rem;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .95rem;
+      color: var(--text);
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    input[type="text"]::placeholder { color: #444; }
+    input[type="text"]:focus {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 3px rgba(200,169,110,.08);
+    }
+    input[type="text"].error { border-color: var(--danger); }
+
+    .field-error {
+      font-size: .75rem;
+      color: var(--danger);
+      margin-top: .4rem;
+      display: none;
+    }
+    .field-error.visible { display: block; }
+
+    .btn {
+      width: 100%;
+      margin-top: .6rem;
+      padding: .85rem 1rem;
+      background: var(--accent);
+      color: #0e0e0e;
+      border: none;
+      border-radius: 2px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: .88rem;
+      font-weight: 500;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: .6rem;
+      transition: background .2s, transform .1s;
+    }
+    .btn:hover  { background: #d9bb82; }
+    .btn:active { transform: scale(.99); }
+    .btn:disabled { background: var(--accent-dim); cursor: not-allowed; transform: none; }
+
+    /* spinner */
+    .spinner {
+      width: 15px; height: 15px;
+      border: 2px solid rgba(0,0,0,.25);
+      border-top-color: #0e0e0e;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: none;
+    }
+    .btn.loading .spinner { display: block; }
+    .btn.loading .btn-label { opacity: .6; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* toast */
+    .toast {
+      display: flex; align-items: flex-start; gap: .7rem;
+      padding: .9rem 1rem;
+      border-radius: 2px;
+      font-size: .83rem;
+      line-height: 1.4;
+      margin-top: 1.2rem;
+      border: 1px solid transparent;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+    }
+    .toast.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .toast.success { background: rgba(92,191,138,.08); border-color: rgba(92,191,138,.25); color: var(--success); }
+    .toast.error   { background: rgba(224,92,92,.08);  border-color: rgba(224,92,92,.25);  color: var(--danger); }
+    .toast svg { flex-shrink: 0; width: 16px; height: 16px; margin-top: 1px; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="9" y1="13" x2="15" y2="13"/>
+      <line x1="9" y1="17" x2="13" y2="17"/>
+    </svg>
+  </div>
+
+  <h1>Generador de PDF</h1>
+  <p class="subtitle">Completá los datos para generar tu documento</p>
+  <div class="divider"></div>
+
+  <div class="field">
+    <label for="nombre">Nombre</label>
+    <input type="text" id="nombre" placeholder="Ej: María" autocomplete="given-name"/>
+    <span class="field-error" id="err-nombre">Ingresá un nombre válido.</span>
+  </div>
+
+  <div class="field">
+    <label for="apellido">Apellido</label>
+    <input type="text" id="apellido" placeholder="Ej: González" autocomplete="family-name"/>
+    <span class="field-error" id="err-apellido">Ingresá un apellido válido.</span>
+  </div>
+
+  <button class="btn" id="submitBtn" onclick="handleSubmit()">
+    <span class="spinner"></span>
+    <span class="btn-label">Generar PDF</span>
+  </button>
+
+  <div class="toast" id="toast">
+    <svg id="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"></svg>
+    <span id="toast-msg"></span>
+  </div>
+</div>
+
+<script>
+  const ENDPOINT = 'http://localhost:8080/api/pdf/generar';
+
+  function validate() {
+    const nombre   = document.getElementById('nombre').value.trim();
+    const apellido = document.getElementById('apellido').value.trim();
+    let valid = true;
+
+    toggleError('nombre',   !nombre,   'err-nombre');
+    toggleError('apellido', !apellido, 'err-apellido');
+
+    if (!nombre || !apellido) valid = false;
+    return valid;
+  }
+
+  function toggleError(inputId, show, errId) {
+    document.getElementById(inputId).classList.toggle('error', show);
+    document.getElementById(errId).classList.toggle('visible', show);
+  }
+
+  function showToast(type, msg) {
+    const toast = document.getElementById('toast');
+    const icon  = document.getElementById('toast-icon');
+    const text  = document.getElementById('toast-msg');
+
+    toast.className = 'toast';           // reset
+    icon.innerHTML  = type === 'success'
+      ? '<polyline points="20 6 9 17 4 12"/>'
+      : '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>';
+
+    text.textContent = msg;
+    // force reflow for re-trigger
+    void toast.offsetWidth;
+    toast.classList.add('visible', type);
+  }
+
+  async function handleSubmit() {
+    if (!validate()) return;
+
+    const nombre   = document.getElementById('nombre').value.trim();
+    const apellido = document.getElementById('apellido').value.trim();
+    const btn      = document.getElementById('submitBtn');
+
+    btn.disabled = true;
+    btn.classList.add('loading');
+
+    try {
+      const response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre, apellido }),
+      });
+
+      if (!response.ok) throw new Error(`El servidor respondió con estado ${response.status}.`);
+
+      const blob = await response.blob();
+
+      // Trigger download
+      const url      = URL.createObjectURL(blob);
+      const link     = document.createElement('a');
+      link.href      = url;
+      link.download  = `${nombre}_${apellido}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+
+      showToast('success', `PDF generado correctamente para ${nombre} ${apellido}.`);
+    } catch (err) {
+      console.error(err);
+      showToast('error', err.message || 'No se pudo conectar con el servidor. Verificá que esté corriendo.');
+    } finally {
+      btn.disabled = false;
+      btn.classList.remove('loading');
+    }
+  }
+
+  // Clear errors on input
+  ['nombre', 'apellido'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+      document.getElementById(id).classList.remove('error');
+      document.getElementById(`err-${id}`).classList.remove('visible');
+    });
+    // Allow Enter key
+    document.getElementById(id).addEventListener('keydown', e => {
+      if (e.key === 'Enter') handleSubmit();
+    });
+  });
+</script>
+
+</body>
+</html>

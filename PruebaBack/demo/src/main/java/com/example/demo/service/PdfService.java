@@ -37,7 +37,7 @@ public class PdfService {
         headerCell.setPadding(20);
 
         Font fuenteHeader = new Font(Font.FontFamily.HELVETICA, 18, Font.BOLD, BaseColor.WHITE);
-        Paragraph headerPar = new Paragraph("Documento Generado", fuenteHeader);
+        Paragraph headerPar = new Paragraph("e-Factura de pedido", fuenteHeader);
         headerPar.setAlignment(Element.ALIGN_CENTER);
         headerCell.addElement(headerPar);
         headerTable.addCell(headerCell);
